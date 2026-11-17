@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Issue List</title>
+<meta name="description" content="Write down what's on your mind as a numbered list and send it, so we can go through it one by one.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one narrow column. Two tabs: "Write" (friend builds and sends the list) and "Work through" (you paste it and tick issues off). */
+:root {
+  --bg: #f3f5f7; --surface: #ffffff; --fg: #17212b; --muted: #5d6b78; --line: #dbe1e7;
+  --accent: #2a5db0; --accent-soft: #e6eefb;
+  --open: #b4531a; --open-soft: #fcefe5; --work: #8a6a00; --work-soft: #fbf4d9;
+  --done: #2c7a4b; --done-soft: #e5f4ea; --danger: #b3261e;
+  --display: "Outfit", "Segoe UI", system-ui, sans-serif;
+  --body: "Inter", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #11161c; --surface: #19212a; --fg: #e6ebf0; --muted: #94a3b1; --line: #2b3641;
+    --accent: #7ea6ec; --accent-soft: #1d2b42;
+    --open: #f0a172; --open-soft: #3a2518; --work: #e3c35a; --work-soft: #352d12;
+    --done: #74cc95; --done-soft: #17321f; --danger: #f2877f;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+[hidden] { display: none !important; }
+.wrap { max-width: 720px; margin: 0 auto; padding-block: 36px 64px; display: flex; flex-direction: column; gap: 24px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: 2rem; line-height: 1.15; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-size: 1.15rem; font-weight: 600; margin: 0; }
+.lede { color: var(--muted); margin: 6px 0 0; max-width: 60ch; }
+
+.modes { display: flex; gap: 4px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.modes button, .tabs button { background: none; border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 8px 12px; color: var(--muted); font-weight: 600; font-size: 0.95rem; }
+.modes button[aria-selected=true], .tabs button[aria-selected=true] { color: var(--fg); border-bottom-color: var(--accent); }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.tabs button { font-weight: 500; font-size: 0.9rem; }
+.count { font-family: var(--mono); font-size: 0.8rem; margin-left: 4px; }
+section.mode { display: flex; flex-direction: column; gap: 18px; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+label, legend { font-size: 0.8rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+label { display: flex; flex-direction: column; gap: 6px; }
+input[type=text], textarea {
+  font: inherit; font-size: 16px; text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--fg);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; width: 100%;
+}
+textarea { resize: vertical; min-height: 72px; }
+input:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+legend { padding: 0; margin-bottom: 6px; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; }
+.row.start { justify-content: flex-start; align-items: center; }
+.prio { display: flex; gap: 6px; flex-wrap: wrap; }
+.prio input { position: absolute; opacity: 0; pointer-events: none; }
+.prio label { text-transform: none; letter-spacing: 0; font-size: 0.88rem; font-weight: 500; color: var(--fg); flex-direction: row;
+  border: 1px solid var(--line); border-radius: 99px; padding: 6px 12px; cursor: pointer; background: var(--bg); }
+.prio input:checked + label { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.prio input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+button { font: inherit; cursor: pointer; border-radius: 8px; color: inherit; }
+.primary { background: var(--accent); color: var(--surface); border: 0; padding: 10px 18px; font-weight: 600; }
+.primary:disabled { opacity: .5; cursor: not-allowed; }
+.ghost { background: none; border: 1px solid var(--line); color: var(--fg); padding: 8px 14px; font-size: 0.9rem; }
+.link { background: none; border: 0; color: var(--muted); font-size: 0.82rem; padding: 4px 6px; text-decoration: underline; text-underline-offset: 2px; }
+.link.danger { color: var(--danger); }
+.msg { font-size: 0.88rem; color: var(--muted); min-height: 1.2em; margin: 0; }
+.msg.err { color: var(--danger); }
+.msg.ok { color: var(--done); }
+
+.progress { display: flex; flex-direction: column; gap: 8px; }
+.progress-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; font-size: 0.9rem; color: var(--muted); }
+.progress-row strong { color: var(--fg); font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.bar { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.bar span { display: block; height: 100%; width: 0; background: var(--done); transition: width .4s ease; }
+
+ol.issues { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.issue { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; }
+.issue.resolved { opacity: .72; }
+.num { font-family: var(--mono); font-weight: 700; font-size: 1.05rem; color: var(--accent); font-variant-numeric: tabular-nums; min-width: 2.4ch; padding-top: 1px; }
+.issue.resolved .num { color: var(--done); }
+.body { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.title { font-weight: 600; font-size: 1rem; margin: 0; overflow-wrap: anywhere; }
+.issue.resolved .title { text-decoration: line-through; text-decoration-color: var(--muted); }
+.details { margin: 0; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 0.8rem; color: var(--muted); }
+.chip { font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; letter-spacing: .02em; }
+.chip.p-high { background: var(--open-soft); color: var(--open); }
+.chip.p-medium { background: var(--work-soft); color: var(--work); }
+.chip.p-low { background: var(--accent-soft); color: var(--accent); }
+.status { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.status button { border: 0; border-radius: 0; background: var(--surface); color: var(--muted); padding: 5px 10px; font-size: 0.82rem; font-weight: 500; }
+.status button + button { border-left: 1px solid var(--line); }
+.status button[aria-pressed=true][data-s=open] { background: var(--open-soft); color: var(--open); }
+.status button[aria-pressed=true][data-s=working] { background: var(--work-soft); color: var(--work); }
+.status button[aria-pressed=true][data-s=resolved] { background: var(--done-soft); color: var(--done); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.note { border-left: 3px solid var(--line); padding: 4px 0 4px 10px; font-size: 0.9rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.note b { font-size: 0.75rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); display: block; }
+.note-edit { display: flex; flex-direction: column; gap: 6px; }
+.empty { text-align: center; padding: 32px 16px; color: var(--muted); border: 1px dashed var(--line); border-radius: 12px; }
+.empty strong { display: block; color: var(--fg); font-family: var(--display); font-size: 1.1rem; margin-bottom: 4px; }
+.preview { font-family: var(--mono); font-size: 0.82rem; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin: 0; max-height: 260px; overflow-y: auto; }
+.hint { font-size: 0.88rem; color: var(--muted); margin: 0; }
+@media (max-width: 480px) { h1 { font-size: 1.6rem; } .wrap { padding-block: 24px 48px; } .card { padding: 16px; } }
+@media (prefers-reduced-motion: reduce) { .bar span { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Issue List</h1>
+    <p class="lede">Write down each thing that's bothering you, one per entry. Every issue gets a number so we can go through them one at a time.</p>
+  </header>
+
+  <div class="modes" role="tablist">
+    <button role="tab" id="mode-write" data-m="write" aria-selected="true">Write the list</button>
+    <button role="tab" id="mode-track" data-m="track" aria-selected="false">Work through it</button>
+  </div>
+
+  <!-- WRITE: the friend builds the list and sends it -->
+  <section class="mode" id="sec-write">
+    <form class="card" id="add-form" novalidate>
+      <h2>Add an issue</h2>
+      <label for="f-title">What's the issue?
+        <input type="text" id="f-title" maxlength="200" placeholder="e.g. I feel like plans get cancelled last minute" autocomplete="off">
+      </label>
+      <label for="f-details">More detail (optional)
+        <textarea id="f-details" maxlength="2000" placeholder="When does it happen, how does it make you feel, what would help?"></textarea>
+      </label>
+      <div class="row">
+        <fieldset>
+          <legend>How much does it matter?</legend>
+          <div class="prio">
+            <input type="radio" name="prio" id="p-low" value="low"><label for="p-low">A little</label>
+            <input type="radio" name="prio" id="p-medium" value="medium" checked><label for="p-medium">Quite a bit</label>
+            <input type="radio" name="prio" id="p-high" value="high"><label for="p-high">A lot</label>
+          </div>
+        </fieldset>
+        <button type="submit" class="primary" id="f-submit">Add issue</button>
+      </div>
+      <p class="msg" id="add-msg" role="status"></p>
+    </form>
+
+    <ol class="issues" id="draft-list"></ol>
+    <div class="empty" id="draft-empty">
+      <strong>Your list is empty</strong>
+      Add the first issue above. It will show up here as #1. Your list is kept on this device until you send it.
+    </div>
+
+    <div class="card" id="send-card" hidden>
+      <h2>Send the list</h2>
+      <p class="hint">This sends the numbered list as a message. Nothing is saved online.</p>
+      <pre class="preview" id="send-preview"></pre>
+      <div class="row start">
+        <button type="button" class="primary" id="btn-share">Send</button>
+        <button type="button" class="ghost" id="btn-copy">Copy text</button>
+      </div>
+      <p class="msg" id="send-msg" role="status"></p>
+    </div>
+  </section>
+
+  <!-- TRACK: you paste the list and tick issues off -->
+  <section class="mode" id="sec-track" hidden>
+    <div class="card">
+      <h2>Paste the list you were sent</h2>
+      <textarea id="paste" rows="5" placeholder="1. Plans get cancelled last minute (matters a lot)&#10;2. ..."></textarea>
+      <div class="row start">
+        <button type="button" class="primary" id="btn-import">Load list</button>
+        <button type="button" class="ghost" id="btn-paste-replace" hidden>Replace current list</button>
+      </div>
+      <p class="msg" id="import-msg" role="status"></p>
+    </div>
+
+    <div id="track-area" hidden>
+      <div class="progress" aria-live="polite" style="margin-bottom:18px">
+        <div class="progress-row"><span id="progress-text"></span><span><strong id="pct">0%</strong> sorted</span></div>
+        <div class="bar"><span id="bar"></span></div>
+      </div>
+      <div class="tabs" role="tablist" id="tabs">
+        <button role="tab" data-f="active" aria-selected="true">To address<span class="count" id="c-active">0</span></button>
+        <button role="tab" data-f="resolved" aria-selected="false">Sorted<span class="count" id="c-resolved">0</span></button>
+        <button role="tab" data-f="all" aria-selected="false">All<span class="count" id="c-all">0</span></button>
+      </div>
+      <ol class="issues" id="track-list" style="margin-top:14px"></ol>
+      <div class="empty" id="track-empty" style="margin-top:14px" hidden></div>
+      <div class="row start" style="margin-top:18px">
+        <button type="button" class="link danger" id="btn-clear">Clear this list</button>
+        <button type="button" class="link danger" id="btn-clear-yes" hidden>Yes, clear everything</button>
+        <button type="button" class="link" id="btn-clear-no" hidden>Keep it</button>
+      </div>
+    </div>
+    <div class="empty" id="track-none">
+      <strong>No list loaded yet</strong>
+      When your friend sends you their list, paste the whole message above and tap Load list.
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  const PRIO = { low: "a little", medium: "quite a bit", high: "a lot" };
+  const STATUS = [["open", "Open"], ["working", "Working on it"], ["resolved", "Sorted"]];
+  const $ = (id) => document.getElementById(id);
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+
+  let mode = store.get("il-mode", "write");
+  let draft = store.get("il-draft", []);
+  let tracked = store.get("il-tracked", []);
+  let filter = "active", editingNote = null, confirmDelete = null, editingDraft = null;
+
+  function el(tag, attrs, ...kids) {
+    const n = document.createElement(tag);
+    for (const k in attrs || {}) {
+      if (k === "class") n.className = attrs[k];
+      else if (k.startsWith("on")) n.addEventListener(k.slice(2), attrs[k]);
+      else n.setAttribute(k, attrs[k]);
+    }
+    for (const c of kids) if (c != null) n.append(c);
+    return n;
+  }
+  function msg(id, text, kind) { const m = $(id); m.textContent = text || ""; m.className = "msg" + (kind ? " " + kind : ""); }
+
+  /* ---------- modes ---------- */
+  function setMode(m) {
+    mode = m; store.set("il-mode", m);
+    $("mode-write").setAttribute("aria-selected", String(m === "write"));
+    $("mode-track").setAttribute("aria-selected", String(m === "track"));
+    $("sec-write").hidden = m !== "write";
+    $("sec-track").hidden = m !== "track";
+  }
+  $("mode-write").onclick = () => setMode("write");
+  $("mode-track").onclick = () => setMode("track");
+
+  /* ---------- write ---------- */
+  function listText() {
+    const head = `Issues I'd like us to talk about (${draft.length}):`;
+    const lines = draft.map((d, i) => {
+      let s = `${i + 1}. ${d.title} (matters ${PRIO[d.priority] || PRIO.medium})`;
+      if (d.details) s += "\n" + d.details.split("\n").map(l => "   " + l).join("\n");
+      return s;
+    });
+    return head + "\n\n" + lines.join("\n\n");
+  }
+
+  function renderDraft() {
+    const list = $("draft-list"); list.replaceChildren();
+    $("draft-empty").hidden = draft.length > 0;
+    $("send-card").hidden = draft.length === 0;
+    draft.forEach((d, idx) => {
+      const actions = el("div", { class: "actions" });
+      if (idx > 0) actions.append(el("button", { type: "button", class: "link", onclick: () => move(idx, -1) }, "Move up"));
+      if (idx < draft.length - 1) actions.append(el("button", { type: "button", class: "link", onclick: () => move(idx, 1) }, "Move down"));
+      actions.append(el("button", { type: "button", class: "link", onclick: () => editDraft(idx) }, "Edit"));
+      if (confirmDelete === "d" + d.id) {
+        actions.append(
+          el("button", { type: "button", class: "link danger", onclick: () => { draft.splice(idx, 1); confirmDelete = null; saveDraft(); } }, "Yes, remove #" + (idx + 1)),
+          el("button", { type: "button", class: "link", onclick: () => { confirmDelete = null; renderDraft(); } }, "Keep it"));
+      } else {
+        actions.append(el("button", { type: "button", class: "link", onclick: () => { confirmDelete = "d" + d.id; renderDraft(); } }, "Remove"));
+      }
+      list.append(el("li", { class: "issue" },
+        el("span", { class: "num" }, "#" + (idx + 1)),
+        el("div", { class: "body" },
+          el("p", { class: "title" }, d.title),
+          d.details ? el("p", { class: "details" }, d.details) : null,
+          el("div", { class: "meta" }, el("span", { class: "chip p-" + d.priority }, "Matters " + PRIO[d.priority])),
+          actions)));
+    });
+    $("send-preview").textContent = draft.length ? listText() : "";
+  }
+  function saveDraft() { store.set("il-draft", draft); renderDraft(); }
+  function move(i, dir) { const [x] = draft.splice(i, 1); draft.splice(i + dir, 0, x); saveDraft(); }
+  function editDraft(i) {
+    const d = draft[i]; editingDraft = d.id;
+    $("f-title").value = d.title; $("f-details").value = d.details || "";
+    const r = document.getElementById("p-" + d.priority); if (r) r.checked = true;
+    $("f-submit").textContent = "Save #" + (i + 1);
+    msg("add-msg", "Editing issue #" + (i + 1) + ".");
+    $("f-title").focus();
+    $("add-form").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  $("add-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const title = $("f-title").value.trim().replace(/\s+/g, " ");
+    if (!title) { msg("add-msg", "Write a short description of the issue first.", "err"); $("f-title").focus(); return; }
+    const priority = (document.querySelector("input[name=prio]:checked") || {}).value || "medium";
+    const details = $("f-details").value.trim();
+    let n;
+    const existing = editingDraft && draft.findIndex(d => d.id === editingDraft);
+    if (editingDraft && existing > -1) {
+      Object.assign(draft[existing], { title, details, priority }); n = existing + 1;
+      msg("add-msg", `Saved issue #${n}.`, "ok");
+    } else {
+      draft.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title, details, priority });
+      n = draft.length; msg("add-msg", `Added as issue #${n}.`, "ok");
+    }
+    editingDraft = null; $("f-submit").textContent = "Add issue";
+    $("f-title").value = ""; $("f-details").value = "";
+    document.getElementById("p-medium").checked = true;
+    saveDraft();
+  });
+
+  async function copyText(text, msgId) {
+    try { await navigator.clipboard.writeText(text); msg(msgId, "Copied. Paste it into a message.", "ok"); }
+    catch (e) {
+      const r = document.createRange(); r.selectNodeContents($("send-preview"));
+      const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      msg(msgId, "Couldn't copy automatically. The text is selected, so copy it yourself.", "err");
+    }
+  }
+  $("btn-copy").onclick = () => copyText(listText(), "send-msg");
+  $("btn-share").onclick = async () => {
+    const text = listText();
+    if (navigator.share) {
+      try { await navigator.share({ text }); msg("send-msg", "Sent to your share menu. Check the message went through.", "ok"); return; }
+      catch (e) { if (e && e.name === "AbortError") { msg("send-msg", ""); return; } }
+    }
+    copyText(text, "send-msg");
+  };
+
+  /* ---------- track ---------- */
+  const PRIO_RE = /\s*\((?:matters\s+)?(a little|quite a bit|a lot)\)\s*$/i;
+  function parseList(text) {
+    const items = []; let cur = null;
+    for (const raw of text.replace(/\r/g, "").split("\n")) {
+      const m = raw.match(/^\s*#?(\d{1,3})[.):\-]\s+(.+)$/);
+      if (m) {
+        let title = m[2].trim(), priority = "medium";
+        const p = title.match(PRIO_RE);
+        if (p) { title = title.replace(PRIO_RE, "").trim(); priority = { "a little": "low", "quite a bit": "medium", "a lot": "high" }[p[1].toLowerCase()]; }
+        cur = { n: +m[1], title, details: "", priority, status: "open", note: "" };
+        items.push(cur);
+      } else if (cur && raw.trim()) {
+        cur.details += (cur.details ? "\n" : "") + raw.trim();
+      }
+    }
+    return items;
+  }
+
+  let pendingImport = null;
+  $("btn-import").onclick = () => {
+    const items = parseList($("paste").value);
+    $("btn-paste-replace").hidden = true;
+    if (!items.length) { msg("import-msg", "No numbered issues found. Paste the whole message, including the lines that start with 1., 2. and so on.", "err"); return; }
+    if (tracked.length) {
+      pendingImport = items;
+      $("btn-paste-replace").hidden = false;
+      msg("import-msg", `Found ${items.length} issues. You already have a list here; replacing it loses your statuses and responses.`);
+      return;
+    }
+    loadItems(items);
+  };
+  $("btn-paste-replace").onclick = () => { if (pendingImport) loadItems(pendingImport); };
+  function loadItems(items) {
+    tracked = items; pendingImport = null; filter = "active";
+    $("btn-paste-replace").hidden = true; $("paste").value = "";
+    msg("import-msg", `Loaded ${items.length} issues.`, "ok");
+    saveTracked();
+  }
+
+  function saveTracked() { store.set("il-tracked", tracked); renderTracked(); }
+
+  $("tabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) { filter = b.dataset.f; renderTracked(); } });
+
+  function renderTracked() {
+    const has = tracked.length > 0;
+    $("track-area").hidden = !has; $("track-none").hidden = has;
+    if (!has) return;
+    for (const b of $("tabs").querySelectorAll("button")) b.setAttribute("aria-selected", String(b.dataset.f === filter));
+    const resolved = tracked.filter(i => i.status === "resolved").length, active = tracked.length - resolved;
+    $("c-active").textContent = active; $("c-resolved").textContent = resolved; $("c-all").textContent = tracked.length;
+    const pct = Math.round(resolved / tracked.length * 100);
+    $("pct").textContent = pct + "%"; $("bar").style.width = pct + "%";
+    $("progress-text").textContent = `${resolved} of ${tracked.length} issues sorted, ${active} to go`;
+
+    const shown = tracked.filter(i => filter === "all" ? true : filter === "resolved" ? i.status === "resolved" : i.status !== "resolved");
+    const list = $("track-list"); list.replaceChildren();
+    const empty = $("track-empty"); empty.hidden = shown.length > 0;
+    if (!shown.length) empty.replaceChildren(
+      el("strong", null, filter === "resolved" ? "Nothing sorted yet" : "Everything is sorted"),
+      filter === "resolved" ? "Mark an issue as Sorted once you've talked it through." : "Every issue on the list has been addressed.");
+
+    for (const i of shown) {
+      const statusGroup = el("div", { class: "status", role: "group", "aria-label": "Status" },
+        ...STATUS.map(([s, label]) => el("button", { type: "button", "data-s": s, "aria-pressed": String(i.status === s),
+          onclick: () => { i.status = s; saveTracked(); } }, label)));
+      let noteBlock = null;
+      if (editingNote === i.n) {
+        const ta = el("textarea", { id: "note-" + i.n, maxlength: "2000", placeholder: "What did you agree on, or what will you do about it?" });
+        ta.value = i.note || "";
+        noteBlock = el("div", { class: "note-edit" }, ta,
+          el("div", { class: "row start" },
+            el("button", { type: "button", class: "primary", onclick: () => { i.note = ta.value.trim(); editingNote = null; saveTracked(); } }, "Save response"),
+            el("button", { type: "button", class: "ghost", onclick: () => { editingNote = null; renderTracked(); } }, "Cancel")));
+        setTimeout(() => ta.focus(), 0);
+      } else if (i.note) {
+        noteBlock = el("div", { class: "note" }, el("b", null, "Response"), i.note);
+      }
+      const actions = el("div", { class: "actions" }, statusGroup);
+      if (editingNote !== i.n) actions.append(el("button", { type: "button", class: "link", onclick: () => { editingNote = i.n; renderTracked(); } }, i.note ? "Edit response" : "Add response"));
+      list.append(el("li", { class: "issue" + (i.status === "resolved" ? " resolved" : "") },
+        el("span", { class: "num" }, "#" + i.n),
+        el("div", { class: "body" },
+          el("p", { class: "title" }, i.title),
+          i.details ? el("p", { class: "details" }, i.details) : null,
+          el("div", { class: "meta" }, el("span", { class: "chip p-" + i.priority }, "Matters " + PRIO[i.priority])),
+          noteBlock, actions)));
+    }
+  }
+
+  const clearBtns = (confirming) => { $("btn-clear").hidden = confirming; $("btn-clear-yes").hidden = !confirming; $("btn-clear-no").hidden = !confirming; };
+  $("btn-clear").onclick = () => clearBtns(true);
+  $("btn-clear-no").onclick = () => clearBtns(false);
+  $("btn-clear-yes").onclick = () => { tracked = []; clearBtns(false); msg("import-msg", "List cleared."); saveTracked(); };
+
+  setMode(mode);
+  renderDraft();
+  renderTracked();
+})();
+</script>
+</body>
+</html>
